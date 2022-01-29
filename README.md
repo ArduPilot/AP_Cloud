@@ -34,6 +34,12 @@ What works?
  - These 'ssh jobs' assume that thee configured private-key will allow the Node server to ssh to the drone without any password, etc.  no password/s are saved, just uses a key.
 
 
+Prerequisites to use this:
+ - AP_Cloud runs on Linux only right now, sorry.
+ - AP_Cloud requires a 'node' version of at least v12  ( we use 'nvm' to switch between node versins, but there are other tools)
+ - you know its a work-in-progress , right? 
+
+
 How to use it:
 ```bash
 cd AP_Cloud
@@ -50,7 +56,7 @@ How to configure it:
  - Edit the config/default.json file and make it represent your list of ssh-able drones.
  - Edit index.js or any of the other files to make it do more cools stuff, and send a PR to us. 
  - The webpage currently use a simple templating tools called 'pug'.  we're not super attached to pug, but look in ./views/*.pug for the two pages that we have right now.
- 
+
 
 
 ![pic1](https://github.com/ArduPilot/AP_Cloud/blob/main/screenshot1.png?raw=true)
