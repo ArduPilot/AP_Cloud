@@ -1,0 +1,26 @@
+doctype html
+html(lang='en')
+  head
+    title= title
+    link(rel="stylesheet" href="style.css")
+    style.
+        table {
+            border-color: red;
+            
+        }
+  body
+    h1= message
+    h2 Individual Details for :  #{drone.display_name}
+    table.table
+        tr
+                th.name  &nbsp;  Display Name &nbsp;
+                th.name &nbsp; Logs Folder  &nbsp;
+                th.name  Ssh Enable? 
+                th.name &nbsp; Last Update &nbsp;
+        tr
+            td.drname &nbsp; 
+                a(href='http://'+whost+':'+wport+'/'+drone.display_name) #{drone.display_name}
+    
+            td.folder &nbsp;   #{drone.logs_folder} &nbsp;
+            td.sshe &nbsp;    #{drone.ssh_enable} &nbsp;
+            td.lastupdate &nbsp;    #{drone.lastupdate} &nbsp;

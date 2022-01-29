@@ -1,0 +1,28 @@
+{
+  "name": "ap_cloud",
+  "version": "1.0.0",
+  "description": "Fleet management solution for ArduPilot Drones",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArduPilot/AP_Cloud.git"
+  },
+  "author": "DavidBuzz",
+  "license": "AGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/ArduPilot/AP_Cloud/issues"
+  },
+  "homepage": "https://github.com/ArduPilot/AP_Cloud#readme",
+  "dependencies": {
+    "config": "^3.3.7",
+    "express": "^4.17.2",
+    "node-schedule": "^2.1.0",
+    "node-ssh": "^12.0.3",
+    "pug": "^3.0.2",
+    "socket.io": "^4.4.1",
+    "socket.io-client": "^4.4.1"
+  }
+}

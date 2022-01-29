@@ -1,0 +1,44 @@
+body {
+    background: black;
+    font-size: 18px;
+    color: white;
+}
+
+th {
+    background-clip: padding-box; /* this has been added */
+    border-radius: 5px;
+    background-color: #369;
+    color: white;
+    border: 5px solid #369; 
+    
+}
+
+td {
+    background-clip: padding-box; /* this has been added */
+    border-radius: 5px;
+    background-color: #369;
+    color: white;
+    border: 5px solid #369; 
+
+}
+
+.drname {
+    background: rgb(25, 159, 221);
+    border: 5px solid rgb(25, 159, 221); 
+    text-align: center;
+}
+.folder {
+    background: rgb(19, 128, 179);
+    border: 5px solid rgb(19, 128, 179); 
+
+}
+.sshe {
+    background: rgb(14, 89, 124);
+    border: 5px solid rgb(14, 89, 124); 
+    text-align: right;
+}
+.lastupdate {
+    background: rgb(14, 89, 124);
+    border: 5px solid rgb(14, 89, 124); 
+
+}

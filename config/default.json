@@ -1,0 +1,30 @@
+{
+    "webserver": {
+      "host": "localhost",
+      "port": 8123
+    },
+    "ssh_private_key":"/home/xxxxxx/.ssh/id_rsa",
+    "dronelist": [ 
+      {
+        "ssh_user": "pi",
+        "ssh_host": "192.168.192.44",
+        "display_name": "drone1",
+        "ssh_enable": "1",
+        "logs_folder" : "/logs/drone1/"
+      },
+      {
+        "ssh_user": "pi",
+        "ssh_host": "192.168.1.6",
+        "display_name": "drone2",
+        "ssh_enable": "0",
+        "logs_folder" : "/logs/drone2/"
+      },
+      {
+        "ssh_user": "pi",
+        "ssh_host": "192.168.1.7",
+        "display_name": "drone3",
+        "ssh_enable": "0",
+        "logs_folder" : "/logs/drone3/"
+      }
+    ]
+  }
