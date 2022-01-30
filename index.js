@@ -1,6 +1,8 @@
 const express = require('express');
 const config = require('config'); // see config/default.json
 let path = require('path');
+const fs = require('fs');
+
 const app = express();
 
 const axios = require('axios');// http client to get .json from server
@@ -14,13 +16,15 @@ const immutable_dronelist = config.get('dronelist'); // config is immutable by d
 var dronelist = JSON.parse(JSON.stringify(immutable_dronelist)); // Low-frills deep copy
 
 
-const fs = require('fs');
 
 
-// this file 
+// for ssh-things
 const Drone_SSH_Manager = require('./tools/ssh-manager.js')
+var SSHmanager = new Drone_SSH_Manager(dronelist,privkeyfile);
 
-var manager = new Drone_SSH_Manager(dronelist,privkeyfile);
+// for log-handling things
+const Drone_LOG_Manager = require('./tools/logfile-manager.js')
+var LOGmanager = new Drone_LOG_Manager(dronelist);
 
 
 // setup a regular scheduled event, once every minute, using cron-like format.
@@ -28,32 +32,35 @@ var manager = new Drone_SSH_Manager(dronelist,privkeyfile);
 const schedule = require('node-schedule');
 const every_minute = schedule.scheduleJob('0,30 * * * * *', async function(){
 
-  console.log('Scheduled SSH task/s are running...');
+  console.log('Scheduled SSH and log-review task/s are running...');
+
+  LOGmanager.getLogInfo();
+  return;
 
   // put a rando test file into /tmp to prove we can..
   console.log("A running ssh file-copy...");
-  await manager.putFile( '/home/buzz/GCS/AP_Cloud/ap_cloud_was_here.txt','/tmp/ap_cloud_was_here.txt');
+  await SSHmanager.putFile( '/home/buzz/GCS/AP_Cloud/ap_cloud_was_here.txt','/tmp/ap_cloud_was_here.txt');
 
   //get uname restults from host as an example
   var ssh_cmd='uname';
   var params_array=['-a'];
   var ssh_cwd='/tmp';
   console.log("A running ssh commands...");
-  await manager.runCommand(ssh_cmd,params_array,ssh_cwd);
+  await SSHmanager.runCommand(ssh_cmd,params_array,ssh_cwd);
 
   // get file listing of /tmp to prove we can
   ssh_cmd='ls';
   params_array=['-aFlrt'];
   ssh_cwd='/tmp';
   console.log("B running ssh commands...");
-  //await manager.runCommand(ssh_cmd,params_array,ssh_cwd)  // works, but noisy
+  //await SSHmanager.runCommand(ssh_cmd,params_array,ssh_cwd)  // works, but noisy
 
   // multiple params, and bash completion works like this:
   ssh_cmd='ls -aFlrt /tmp/ap*';
   params_array=[];
   ssh_cwd='/tmp';
   console.log("C running ssh commands...");
-  await manager.runCommand(ssh_cmd,params_array,ssh_cwd);
+  await SSHmanager.runCommand(ssh_cmd,params_array,ssh_cwd);
 
 
 
@@ -64,7 +71,7 @@ const every_5_mins = schedule.scheduleJob('0 */5 * * * *', async function(){
   
   console.log('Scheduled SSH task/s re-enabled.');
 
-  await manager.re_enable_ssh_all();
+  await SSHmanager.re_enable_ssh_all();
   });
 
 
@@ -89,7 +96,14 @@ for (let d of dronelist) {
 
     //eg /drone1
     app.get('/'+d['display_name'],  (req, res) => {
-        res.render('drone', { title: 'AP_Cloud', message: 'Welcome to AP_Cloud', dronelist:dronelist, wport:wport, whost:whost, drone: d})
+        var loginfo = LOGmanager.getLogReviewInfo(d);// get up-to-date log info
+        res.render('drone', { title: 'AP_Cloud', 
+                            message: 'Welcome to AP_Cloud', 
+                            dronelist:dronelist, 
+                            wport:wport, whost:whost,
+                            drone: d,
+                            loginfo : loginfo
+                             })
     });
 
 }
