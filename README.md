@@ -37,7 +37,8 @@ What works?
  - if, while running, it finds a new/updated file ondisk that wasn't there before, it scans it and add it to the system.
  - log files on-disk must be at least 1 minute old before it will try scanning them.( incase its a in-progress upload)
  - if will re-scan files if their mtime ondisk is newer than the last scan, ie its changed since it was scanned.
-
+ - it regularly (every few seconds) also 'ping's each of the hosts for their Online/offline status, and reportsthat into the frontpage.(see screenshot 1)
+ 
 
 Prerequisites to use this:
  - AP_Cloud runs on Linux only right now, sorry.

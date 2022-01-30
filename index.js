@@ -16,8 +16,6 @@ const immutable_dronelist = config.get('dronelist'); // config is immutable by d
 var dronelist = JSON.parse(JSON.stringify(immutable_dronelist)); // Low-frills deep copy
 
 
-
-
 // for ssh-things
 const Drone_SSH_Manager = require('./tools/ssh-manager.js')
 var SSHmanager = new Drone_SSH_Manager(dronelist,privkeyfile);
@@ -26,6 +24,12 @@ var SSHmanager = new Drone_SSH_Manager(dronelist,privkeyfile);
 const Drone_LOG_Manager = require('./tools/logfile-manager.js')
 var LOGmanager = new Drone_LOG_Manager(dronelist);
 
+// ping monitor for remote host's being up or not...
+const Drone_PING_Manager = require('./tools/ping-manager.js')
+var PINGManager = new Drone_PING_Manager(dronelist);
+
+// puts it in a worker and moves on
+PINGManager.start();
 
 // setup a regular scheduled event, once every minute, using cron-like format.
 // https://www.npmjs.com/package/node-schedule
@@ -88,7 +92,18 @@ app.use(express.static('public'))
 
 
 app.get('/',  (req, res) => {
-    res.render('index', { title: 'AP_Cloud', message: 'Welcome to AP_Cloud', dronelist:dronelist, wport:wport, whost:whost })
+    var pinginfo = PINGManager.getPingInfo();
+    console.log(pinginfo);
+    for (let d of dronelist) {// 'let' allows us to edit 'd' on the fly
+        if (pinginfo[d['display_name']] )
+            d['lastupdate'] =  pinginfo[d['display_name']].status?'Online Now!':'';
+    }
+    res.render('index', { title: 'AP_Cloud', 
+                          message: 'Welcome to AP_Cloud', 
+                          dronelist:dronelist, 
+                          wport:wport, whost:whost,
+                          pinginfo : pinginfo
+                         })
 });
 
 // give each drone a page of its own, by-name

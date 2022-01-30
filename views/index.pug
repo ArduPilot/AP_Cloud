@@ -16,7 +16,7 @@ html(lang='en')
                 th.name  &nbsp;  Display Name &nbsp;
                 th.name &nbsp; Logs Folder  &nbsp;
                 th.name  Ssh Enable? 
-                th.name &nbsp; Last Update &nbsp;
+                th.name &nbsp; Status &nbsp;
 
         each drone in dronelist
             tr
@@ -25,4 +25,6 @@ html(lang='en')
        
                 td.folder &nbsp;   #{drone.logs_folder} &nbsp;
                 td.sshe &nbsp;    #{drone.ssh_enable} &nbsp;
-                td.lastupdate &nbsp;    #{drone.lastupdate} &nbsp;
+                td.lastupdate 
+                    span.green #{drone.lastupdate}
+                        
