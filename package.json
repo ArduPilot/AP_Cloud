@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/ArduPilot/AP_Cloud#readme",
   "dependencies": {
+    "axios": "^0.25.0",
     "bluebird": "^3.7.2",
     "child_process": "^1.0.2",
     "config": "^3.3.7",
