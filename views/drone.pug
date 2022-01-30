@@ -20,7 +20,7 @@ html(lang='en')
         each log in loginfo
             tr
                 td.drname &nbsp; 
-                    a(href='http://'+whost+':'+wport+'/'+drone.display_name) #{log.mtime}
+                    a(href='/'+drone.display_name) #{log.mtime}
         
                 td.folder &nbsp;   #{log.size} &nbsp;
                 td.sshe &nbsp;    #{log.total_distance_travelled} &nbsp;
