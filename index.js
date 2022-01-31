@@ -92,6 +92,8 @@ app.set('view engine', 'pug');
 // stuff in ./public/xx is accessable as /xx
 // https://www.youtube.com/watch?v=sFAT_vTxT9o&ab_channel=dcode 
 app.use(express.static('public'))
+app.use('/logs', express.static('logs'))  //  so /logs/drone3/123/xxx.bin is a valid url to get a log from, 
+// the above line is a !!WARNING!!  it means that all logs on this box are  basically public .  todo security etc
 
 
 app.get('/',  (req, res) => {

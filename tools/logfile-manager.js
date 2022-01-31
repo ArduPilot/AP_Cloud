@@ -18,7 +18,7 @@ class Drone_LOGS_Manager {
       this.collectedfileinfo= []; // index is filename, values are objects {} with useful stuff
       this.in_progress = true; // bool for gui to show if we are busy or not - todo 
       this.execqueue = [];// exec queue for counting cpu-bound tasks
-      this.queueMAX = 15;  // only allow xx simultaneous exec calls
+      this.queueMAX = 5;  // only allow 5 or 15 simultaneous exec calls
       this.queuecount = 0;  // holds how many execs are running
     }
 
@@ -29,7 +29,7 @@ class Drone_LOGS_Manager {
 
         for (let d of this.dronelist) { // iterates "modifyable"[let] values[of], not keys, dronelist is a global
 
-            var name = d['display_name'];// drone name
+            //var name = d['display_name'];// drone name
             var logsfolder = "."+d['logs_folder']; // start with '.'
 
             // make folder/s for each drone if it doesn't alreadty exist
@@ -46,7 +46,7 @@ class Drone_LOGS_Manager {
                     // do we also "check" each of the fiels as we find them..?
                     if ( ! await this.is_file_already_reviewed(filename)) {
                         //console.log("\nreviewing file:",filename);
-                        this.review_file(name,filename);
+                        this.review_file(d,filename); // d contains drone name and other
                     } else {
                         //console.log("already reviewed:",filename);
                     }
@@ -108,11 +108,12 @@ class Drone_LOGS_Manager {
 
     // what this does actually is manage a bit of a Queue that limits the maimum number of 
     //  concurrent 'reviewers' to .. the numver of CPU's in the system minus 1
-    async review_file(dronename,filename) {
+    async review_file(d,filename) {
  
         // this.execqueue = [];// exec queue for counting cpu-bound tasks
         // this.queueMAX = 5;  // only allow 5 simultaneous exec calls
         // this.queuecount = 0;  // holds how many execs are running
+
 
         this.isreviewed[filename] =  Date.now(); // don't re-review something that's queue'd up..
 
@@ -124,22 +125,24 @@ class Drone_LOGS_Manager {
             if (self.execqueue.length > 0 && self.queuecount < self.queueMAX) {  // get next item in the queue!
                 self.queuecount += 1;
                 var nextup = self.execqueue.shift();
-                var dronename = nextup[0];
+                var ZZdronename = nextup[0];
                 var filename = nextup[1];
                 //exec('wget '+url, wget_callback);
                 console.log("queue finish-and-run...",self.queuecount,"waiting:",self.execqueue.length)
-                self.actual_review_file(dronename,filename,wget_callback);
+                self.actual_review_file(ZZdronename,filename,wget_callback);
             }
         }
+
+        var Zdronename = d['display_name'];// drone name
 
         if (this.queuecount < this.queueMAX) {  // go get the file!
             this.queuecount += 1;
             //exec('wget '+url, wget_callback);
             console.log("queue ran...",this.queuecount,"waiting:",self.execqueue.length)
-            this.actual_review_file(dronename,filename,wget_callback);
+            this.actual_review_file(Zdronename,filename,wget_callback);
           } else {  // queue it up...
             console.log("queue push...",this.queuecount,"waiting:",self.execqueue.length)
-            this.execqueue.push([dronename,filename]);
+            this.execqueue.push([Zdronename,filename]);
           }
 
     }
@@ -150,8 +153,22 @@ class Drone_LOGS_Manager {
         // this flags the file as reviewed immediately as soon as we 'try', but before stdout results
         //  necessarily arrive, so we don't try to review it more than once concurrently
 
+
         // where we collect info on the files etc
         if (this.collectedfileinfo[filename] == undefined ) {
+
+            // workout a plausible url that file can be downloaded at...
+            var lf = '/';
+            for ( var tmp of this.dronelist ) { // lookup drone 'logs' folder from name
+                if (tmp.display_name == dronename) {
+                    lf = tmp.logs_folder;
+                }
+            }
+
+            var idx1 = filename.indexOf(lf);    
+            if (idx1 < 0 ) return;// string not found in output, skip it            
+            var url = filename.substr(idx1);// from ibx1 to end
+
             this.collectedfileinfo[filename] = {
                 dronename: dronename,
                 mtime : null,
@@ -159,7 +176,8 @@ class Drone_LOGS_Manager {
                 review_stdout : null,
                 bad_data : 0,
                 total_time_in_air : 0,
-                total_distance_travelled : 0
+                total_distance_travelled : 0,
+                url : url
             };
         }
 

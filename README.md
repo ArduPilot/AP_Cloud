@@ -1,19 +1,19 @@
 # AP_Cloud
 Fleet management solution for ArduPilot Drones
 
-TLDR:  no it doesn't work yet.
+TLDR:  some stuff works.
 
 Goals - a 'web gui' for:
 
  - a "drone management" solution
- - ability to easily get logs off the vehicle
- - ability to see drone version info in a web interface 
- - ability to update the firmware on each drone  (with appropriate hardware)
- - search through the logs and their timestamps 
- - download logs for offline review/analysis
- - and display a gui showing how recently each drone had uploaded.
- - run some sort of 'log analyser' on each log after its uploaded for stats/params/faults/etc.
- - perhaps integrate with plot.ardupilot.org , or a copy of it, for a 'plot this log' function
+ - ability to easily get logs off the vehicle - working
+ - ability to see drone version info in a web interface - not working
+ - ability to update the firmware on each drone  (with appropriate hardware) - not working
+ - search through the logs and their timestamps - working
+ - download logs for offline review/analysis  -  working. run this: "cd AP_Cloud/public ; ln -s ../logs ." to make your logs downloadable with no security.
+ - and display a gui showing how recently each drone had uploaded. - kinda 
+ - run some sort of 'log analyser' on each log after its uploaded for stats/params/faults/etc. - working
+ - perhaps integrate with plot.ardupilot.org , or a copy of it, for a 'plot this log' function - not working
 
 Technical expectations:
 
@@ -38,7 +38,14 @@ What works?
  - log files on-disk must be at least 1 minute old before it will try scanning them.( incase its a in-progress upload)
  - if will re-scan files if their mtime ondisk is newer than the last scan, ie its changed since it was scanned.
  - it regularly (every few seconds) also 'ping's each of the hosts for their Online/offline status, and reportsthat into the frontpage.(see screenshot 1)
- 
+ - it tries to do an outbound ssh/rsync connection from the AP_Cloud server to the IP address of each online drone, and copy all its logs off of it. [this sort of setup will work if your AP_Cloud install is on the same LAN as your drones, or can otherwise ping them when they are turned on... eg vpn or zerotier].
+ - gettinglogs over http, click link, downloaded. [if you have run the command to enable it above , as its insecure for the moment]
+
+ What doesn't?
+ there's no security.
+ logs once on this server should be considered public right now.
+
+
 
 Prerequisites to use this:
  - AP_Cloud runs on Linux only right now, sorry.
