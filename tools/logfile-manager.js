@@ -18,7 +18,7 @@ class Drone_LOGS_Manager {
       this.collectedfileinfo= []; // index is filename, values are objects {} with useful stuff
       this.in_progress = true; // bool for gui to show if we are busy or not - todo 
       this.execqueue = [];// exec queue for counting cpu-bound tasks
-      this.queueMAX = 5;  // only allow 5 or 15 simultaneous exec calls
+      this.queueMAX = 15;  // only allow 5 or 15 simultaneous exec calls
       this.queuecount = 0;  // holds how many execs are running
     }
 
@@ -239,6 +239,8 @@ class Drone_LOGS_Manager {
           
         child.on('error', (error) => {
             console.error(`error: ${error.message}`);
+            callback();// tell whoever is waiting.. the queueing code
+            return;
           });
           
         child.on('close', (code) => {
