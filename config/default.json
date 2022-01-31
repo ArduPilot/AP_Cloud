@@ -10,21 +10,24 @@
         "ssh_host": "192.168.192.44",
         "display_name": "drone1",
         "ssh_enable": "1",
-        "logs_folder" : "/logs/drone1/"
+        "logs_folder" : "/logs/drone1/",
+        "remote_logs_folder" : "/home/pi/"
       },
       {
         "ssh_user": "pi",
         "ssh_host": "192.168.1.6",
         "display_name": "drone2",
         "ssh_enable": "0",
-        "logs_folder" : "/logs/drone2/"
+        "logs_folder" : "/logs/drone2/",
+        "remote_logs_folder" : "/home/pi/"
       },
       {
         "ssh_user": "pi",
         "ssh_host": "192.168.1.7",
         "display_name": "drone3",
         "ssh_enable": "0",
-        "logs_folder" : "/logs/drone3/"
+        "logs_folder" : "/logs/drone3/",
+        "remote_logs_folder" : "/home/pi/"
       }
     ]
   }

@@ -5,7 +5,7 @@ const fs = require('fs');
 
 const app = express();
 
-const axios = require('axios');// http client to get .json from server
+//const axios = require('axios');// http client to get .json from server
 
 const wport = config.get('webserver.port');
 const whost = config.get('webserver.host');
@@ -37,8 +37,9 @@ const schedule = require('node-schedule');
 const every_minute = schedule.scheduleJob('0,30 * * * * *', async function(){
 
   console.log('Scheduled SSH and log-review task/s are running...');
+  
+  await LOGmanager.getLogInfo();// processes existing .bin logs on startup, and on following runs, looks for new logs to process
 
-  LOGmanager.getLogInfo();
   return;
 
   // put a rando test file into /tmp to prove we can..
@@ -75,7 +76,9 @@ const every_5_mins = schedule.scheduleJob('0 */5 * * * *', async function(){
   
   console.log('Scheduled SSH task/s re-enabled.');
 
-  await SSHmanager.re_enable_ssh_all();
+  await SSHmanager.rsync_logs(); // probes all drone-pi's for logs and copies any new ones here.(rsync)
+
+  await SSHmanager.re_enable_ssh_all(); // if for any reason a box wasn't ssh-able, it retrys after 5 mins becasue of this
   });
 
 
@@ -93,16 +96,19 @@ app.use(express.static('public'))
 
 app.get('/',  (req, res) => {
     var pinginfo = PINGManager.getPingInfo();
-    console.log(pinginfo);
+    //console.log("which drones are online/pingable:",pinginfo);
     for (let d of dronelist) {// 'let' allows us to edit 'd' on the fly
         if (pinginfo[d['display_name']] )
             d['lastupdate'] =  pinginfo[d['display_name']].status?'Online Now!':'';
     }
+    var queuestats = LOGmanager.queue_stats();// get queue info
+
     res.render('index', { title: 'AP_Cloud', 
                           message: 'Welcome to AP_Cloud', 
                           dronelist:dronelist, 
                           wport:wport, whost:whost,
-                          pinginfo : pinginfo
+                          pinginfo : pinginfo,
+                          queuestats : queuestats
                          })
 });
 

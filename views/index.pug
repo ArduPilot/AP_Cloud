@@ -10,7 +10,8 @@ html(lang='en')
         }
   body
     h1= message
-    h2 Drone List
+    h2 Drone List   
+    h3 Currently Processing Logs?  Busy: #{queuestats.running} Waiting: #{queuestats.waiting}
     table.table
         tr
                 th.name  &nbsp;  Display Name &nbsp;

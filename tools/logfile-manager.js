@@ -17,6 +17,9 @@ class Drone_LOGS_Manager {
       this.isreviewed = [];// index is filename, values are timestamp of last review
       this.collectedfileinfo= []; // index is filename, values are objects {} with useful stuff
       this.in_progress = true; // bool for gui to show if we are busy or not - todo 
+      this.execqueue = [];// exec queue for counting cpu-bound tasks
+      this.queueMAX = 15;  // only allow xx simultaneous exec calls
+      this.queuecount = 0;  // holds how many execs are running
     }
 
     // looks on-disk 'right now' at the log folder/s for all the drones, and "collects this info" and reports it via dronelist
@@ -97,7 +100,51 @@ class Drone_LOGS_Manager {
 
     }
 
+    queue_stats() {
+        return { running : this.queuecount,
+                 waiting : this.execqueue.length }; // how busy is the log-processor part of it?
+
+    }
+
+    // what this does actually is manage a bit of a Queue that limits the maimum number of 
+    //  concurrent 'reviewers' to .. the numver of CPU's in the system minus 1
     async review_file(dronename,filename) {
+ 
+        // this.execqueue = [];// exec queue for counting cpu-bound tasks
+        // this.queueMAX = 5;  // only allow 5 simultaneous exec calls
+        // this.queuecount = 0;  // holds how many execs are running
+
+        this.isreviewed[filename] =  Date.now(); // don't re-review something that's queue'd up..
+
+        // our callback for each exec call
+        var self=this;// for use inside the callback
+        function wget_callback(err, stdout, stderr) {
+            self.queuecount -= 1;
+            
+            if (self.execqueue.length > 0 && self.queuecount < self.queueMAX) {  // get next item in the queue!
+                self.queuecount += 1;
+                var nextup = self.execqueue.shift();
+                var dronename = nextup[0];
+                var filename = nextup[1];
+                //exec('wget '+url, wget_callback);
+                console.log("queue finish-and-run...",self.queuecount,"waiting:",self.execqueue.length)
+                self.actual_review_file(dronename,filename,wget_callback);
+            }
+        }
+
+        if (this.queuecount < this.queueMAX) {  // go get the file!
+            this.queuecount += 1;
+            //exec('wget '+url, wget_callback);
+            console.log("queue ran...",this.queuecount,"waiting:",self.execqueue.length)
+            this.actual_review_file(dronename,filename,wget_callback);
+          } else {  // queue it up...
+            console.log("queue push...",this.queuecount,"waiting:",self.execqueue.length)
+            this.execqueue.push([dronename,filename]);
+          }
+
+    }
+    // the 'actual' reviewerr 
+    async actual_review_file(dronename,filename, callback) {
 
         this.isreviewed[filename] =  Date.now(); 
         // this flags the file as reviewed immediately as soon as we 'try', but before stdout results
@@ -159,6 +206,7 @@ class Drone_LOGS_Manager {
                 this.collectedfileinfo[filename].total_distance_travelled = _total_distance_travelled.split(/d: /)[1]; // eg "8721.1 meters"
 
                 console.log(filename,"time-in-air(h:m):",this.collectedfileinfo[filename].total_time_in_air,"distance flown:",this.collectedfileinfo[filename].total_distance_travelled );
+
             }
 
             this.collectedfileinfo[filename].review_stdout = data; // give it stdout as review "results"
@@ -182,6 +230,8 @@ class Drone_LOGS_Manager {
                 console.log("review failed for log:",filename," with error code:",code);// cmd reported failure, retry?
                 //this.isreviewed[filename] = undefined; // to retry over and over
             }
+            callback();// tell whoever is waiting.. the queueing code
+            return;
           }); 
 
     }
