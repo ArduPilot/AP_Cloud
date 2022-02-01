@@ -11,7 +11,7 @@ var date_format = require('date-format');
 
 var queue = require('queue'); // a queue with timeouts
 const { exit } = require('process');
-//var Queue = queue({ results: [] });
+var serialize = require('node-serialize');
 
 
 class Drone_LOGS_Manager {
@@ -24,7 +24,12 @@ class Drone_LOGS_Manager {
 
         this.jobtimers = []; //start time of each job saved here. idx is filename 
 
-        this.queue = queue({ results: [] , autostart: true, concurrency: 8}); // for managing processing jobs ... 8 is ~number of cpu cores u have 
+        this.queue = null;
+        this.setup_queue();
+    }
+    setup_queue () {
+        
+        this.queue = queue({ results: [] , autostart: true, concurrency: 9}); // for managing processing jobs ... 8 is ~number of cpu cores u have 
         var self = this;
         this.queue.on('timeout', function (next, job) {
             var this_job_start = self.jobtimers[job.filename];
@@ -41,8 +46,39 @@ class Drone_LOGS_Manager {
         var self = this;
         this.queue.start(function (err) {
             if (err) throw err;
-            console.log('all done:', self.queue.results);
+            //console.log('all done:', self.queue.results);
         });
+    }
+
+    async serialize() {
+
+        var objS = serialize.serialize(this);
+
+        fs.writeFile('logger_data.json', objS, function (err) {
+            if (err) return console.log(err);
+            console.log('serialized logger!');
+          });
+
+    }
+
+    // reconstruct parts of the object to be iterable after deserialize
+    // to prevent:  TypeError: this.dronelist is not iterable
+    async deserialize (dronelist) {
+
+        this.dronelist = dronelist;
+
+        // now we want to forget about logs that we haven't seen 'results' for so we can re-run or compelte the processing
+        for ( var fname in this.isreviewed  ){// index is filename, values are timestamp of last review
+            if  ( (this.collectedfileinfo[fname] == undefined ) || (this.collectedfileinfo[fname].mtime == null  )) {
+                delete(this.isreviewed[fname]);
+                delete(this.allresults[fname]);
+                delete(this.jobtimers[fname]);
+            }
+        }
+
+        // below is basically a redo of the consturctor for the queue stuff
+        this.setup_queue();
+
     }
 
     // looks on-disk 'right now' at the log folder/s for all the drones, and "collects this info" and reports it via dronelist

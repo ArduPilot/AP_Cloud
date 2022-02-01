@@ -2,6 +2,8 @@ const express = require('express');
 const config = require('config'); // see config/default.json
 let path = require('path');
 const fs = require('fs');
+var serialize = require('node-serialize');
+
 
 const app = express();
 
@@ -17,15 +19,26 @@ var dronelist = JSON.parse(JSON.stringify(immutable_dronelist)); // Low-frills d
 
 
 // for ssh-things
-const Drone_SSH_Manager = require('./tools/ssh-manager.js')
+const Drone_SSH_Manager = require('./tools/ssh-manager.js');
 var SSHmanager = new Drone_SSH_Manager(dronelist,privkeyfile);
 
 // for log-handling things
-const Drone_LOG_Manager = require('./tools/logfile-manager.js')
+const Drone_LOG_Manager = require('./tools/logfile-manager.js');
+// we persist this object ondisk as json, as its expensive to rebuild every restart..
 var LOGmanager = new Drone_LOG_Manager(dronelist);
+var persistfile = "./logger_data.json";
+if (fs.existsSync(persistfile)) {
+    //file exists
+    const content = fs.readFileSync(persistfile).toString();// off-disk, its a Buffer, but unserialize needs a string
+    var x = serialize.unserialize(content);
+    Object.assign(LOGmanager, x);
+    LOGmanager.deserialize(dronelist); // mop up after
+    console.log("LOGmanager cache loaded ( to re-process, without cache, all logs on-disk , please delete "+persistfile+" and start app again)");
+    LOGmanager.queue_stats(); // say hi
+  } 
 
 // ping monitor for remote host's being up or not...
-const Drone_PING_Manager = require('./tools/ping-manager.js')
+const Drone_PING_Manager = require('./tools/ping-manager.js');
 var PINGManager = new Drone_PING_Manager(dronelist);
 
 // puts it in a worker and moves on
@@ -34,11 +47,14 @@ PINGManager.start();
 // setup a regular scheduled event, once every minute, using cron-like format.
 // https://www.npmjs.com/package/node-schedule
 const schedule = require('node-schedule');
+const { exit } = require('process');
 const every_minute = schedule.scheduleJob('0,30 * * * * *', async function(){
 
   console.log('Scheduled SSH and log-review task/s are running...');
   
   await LOGmanager.getLogInfo();// processes existing .bin logs on startup, and on following runs, looks for new logs to process
+
+  await LOGmanager.serialize(); // persist to dosi
 
   return;
 
@@ -134,7 +150,7 @@ for (let d of dronelist) {
 const server = app.listen(wport, whost, (err) => {
     if (err) {
         console.log(err);
-        process.exit(1);
+        exit(1); // process.exit
     }
     console.log(`Server is running on ${whost}:${server.address().port}`);
 });
