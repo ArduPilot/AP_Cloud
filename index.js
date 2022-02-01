@@ -2,6 +2,8 @@ const express = require('express');
 const config = require('config'); // see config/default.json
 let path = require('path');
 const fs = require('fs');
+
+fs.copyFileSync("./modified/serialize.js","./node_modules/node-serialize/lib/serialize.js"); // a  hack that makes node-serialize 0.0.4 work
 var serialize = require('node-serialize');
 
 
