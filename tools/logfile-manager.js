@@ -89,7 +89,7 @@ class Drone_LOGS_Manager {
         for (let d of this.dronelist) { // iterates "modifyable"[let] values[of], not keys, dronelist is a global
 
             //var name = d['display_name'];// drone name
-            var logsfolder = "."+d['logs_folder']; // start with '.'
+            var logsfolder = d['logs_folder']; // start with '.'
 
             // make folder/s for each drone if it doesn't alreadty exist
             fs.mkdirSync(logsfolder, { recursive: true });
@@ -214,7 +214,7 @@ class Drone_LOGS_Manager {
                 }
             }
 
-            var idx1 = filename.indexOf(lf);    
+            var idx1 = filename.indexOf(lf+1);    
             if (idx1 < 0 ) return;// string not found in output, skip it            
             var url = filename.substr(idx1);// from ibx1 to end
 

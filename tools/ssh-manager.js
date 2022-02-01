@@ -27,7 +27,7 @@ class Drone_SSH_Manager {
 
     // if a drone is reporting as 'online' ( ie its pingable , etc), and its been more than 10 minuttes since we saw a log, 
     // then we'll try to rsync the entire logs folder form the drone to this server 
-    //  the target folder for this 'rsync' is a "__managed" folder inside "logs_folder" : "/logs/drone1/"  so as to 
+    //  the target folder for this 'rsync' is a "__managed" folder inside "logs_folder" : "./logs/drone1/"  so as to 
     //  discourage users from dropping logs there, but still let the log processor/s process those .
     async rsync_logs (){
 
@@ -44,7 +44,7 @@ class Drone_SSH_Manager {
                     console.log("drone:",d['display_name'],"for RSYNC of LOGS...");
 
                     var remote_dir  = d['remote_logs_folder']; 
-                    var target_dir  = path.resolve("."+d['logs_folder']+"__managed/"); // 'resolve' turns it into a absolute path
+                    var target_dir  = path.resolve(d['logs_folder']+"__managed/"); // 'resolve' turns it into a absolute path
                     var ssh_user    = d['ssh_user'];
                     var ssh_host    = d['ssh_host'];
 
