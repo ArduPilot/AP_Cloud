@@ -9,17 +9,40 @@ const { spawn } = require('child_process'); // .spawn(...) doesn't block the mai
 
 var date_format = require('date-format');
 
+var queue = require('queue'); // a queue with timeouts
+const { exit } = require('process');
+//var Queue = queue({ results: [] });
+
 
 class Drone_LOGS_Manager {
     constructor(dronelist) {
-      this.dronelist = dronelist;
-      this.allresults = [];
-      this.isreviewed = [];// index is filename, values are timestamp of last review
-      this.collectedfileinfo= []; // index is filename, values are objects {} with useful stuff
-      this.in_progress = true; // bool for gui to show if we are busy or not - todo 
-      this.execqueue = [];// exec queue for counting cpu-bound tasks
-      this.queueMAX = 15;  // only allow 5 or 15 simultaneous exec calls
-      this.queuecount = 0;  // holds how many execs are running
+        this.dronelist = dronelist;
+        this.allresults = [];
+        this.isreviewed = [];// index is filename, values are timestamp of last review
+        this.collectedfileinfo= []; // index is filename, values are objects {} with useful stuff
+        this.in_progress = true; // bool for gui to show if we are busy or not - todo 
+
+        this.jobtimers = []; //start time of each job saved here. idx is filename 
+
+        this.queue = queue({ results: [] , autostart: true, concurrency: 8}); // for managing processing jobs ... 8 is ~number of cpu cores u have 
+        var self = this;
+        this.queue.on('timeout', function (next, job) {
+            var this_job_start = self.jobtimers[job.filename];
+            var now = Date.now();
+            console.log('job timed out:',job.filename,job.timeout,"job run seconds:",(now-this_job_start)/1000);
+            next();
+        });
+        // get notified when jobs complete
+        this.queue.on('success', function (result, job) {
+            console.log('job result: (timeout seconds)',job.timeout/1000,result);
+        });
+
+        // begin processing, get notified on end / failure
+        var self = this;
+        this.queue.start(function (err) {
+            if (err) throw err;
+            console.log('all done:', self.queue.results);
+        });
     }
 
     // looks on-disk 'right now' at the log folder/s for all the drones, and "collects this info" and reports it via dronelist
@@ -64,6 +87,7 @@ class Drone_LOGS_Manager {
 
             // we wait til file is at least 5 minutes old to review, it might still be uploading
             const stats = await stat(filename); //await promise wrapper
+
          
             var now_ms = Date.now();
             var mtime = stats.mtime; // a Date() object
@@ -77,7 +101,7 @@ class Drone_LOGS_Manager {
                 // and we haven't got review info for this log, then revview it now
                 if ( this.isreviewed[filename] == undefined ) 
                 {
-                    console.log("un-reviewed log, and over a minute old",filename);
+                    //console.log("un-reviewed log, and over a minute old",filename);
                     return false;
                 }
 
@@ -101,9 +125,10 @@ class Drone_LOGS_Manager {
     }
 
     queue_stats() {
-        return { running : this.queuecount,
-                 waiting : this.execqueue.length }; // how busy is the log-processor part of it?
 
+        console.log("Queue info. pending:",this.queue.pending,"length:",this.queue.length);
+        return { running : this.queue.pending,
+                     waiting : this.queue.length};
     }
 
     // what this does actually is manage a bit of a Queue that limits the maimum number of 
@@ -114,45 +139,33 @@ class Drone_LOGS_Manager {
         // this.queueMAX = 5;  // only allow 5 simultaneous exec calls
         // this.queuecount = 0;  // holds how many execs are running
 
-
         this.isreviewed[filename] =  Date.now(); // don't re-review something that's queue'd up..
 
-        // our callback for each exec call
-        var self=this;// for use inside the callback
-        function wget_callback(err, stdout, stderr) {
-            self.queuecount -= 1;
-            
-            if (self.execqueue.length > 0 && self.queuecount < self.queueMAX) {  // get next item in the queue!
-                self.queuecount += 1;
-                var nextup = self.execqueue.shift();
-                var ZZdronename = nextup[0];
-                var filename = nextup[1];
-                //exec('wget '+url, wget_callback);
-                console.log("queue finish-and-run...",self.queuecount,"waiting:",self.execqueue.length)
-                self.actual_review_file(ZZdronename,filename,wget_callback);
-            }
+        // new queue impl...................
+        const stats = await stat(filename); // await stats to continue, we need file-size-on-disk for timeout calcs
+        var jobtimeout = stats.size/1000*24; // get plausible milliseconds timeout from file sie
+        if (stats.size == 0 ) return false; //don't even queue empty files
+        var self = this;
+        function extraSlowJob (cb) {  
+            self.jobtimers[filename] = Date.now();
+            self.actual_review_file(d['display_name'],filename,cb);  
         }
-
-        var Zdronename = d['display_name'];// drone name
-
-        if (this.queuecount < this.queueMAX) {  // go get the file!
-            this.queuecount += 1;
-            //exec('wget '+url, wget_callback);
-            console.log("queue ran...",this.queuecount,"waiting:",self.execqueue.length)
-            this.actual_review_file(Zdronename,filename,wget_callback);
-          } else {  // queue it up...
-            console.log("queue push...",this.queuecount,"waiting:",self.execqueue.length)
-            this.execqueue.push([Zdronename,filename]);
-          }
+        //cb() is to report end-of-job
+        extraSlowJob.timeout = jobtimeout<5000?5000:jobtimeout; // instantiating python takes a few secs, so set a min of 3 secs
+        extraSlowJob.filename = filename;
+        console.log("extraSlowJob",extraSlowJob)
+        this.queue.push(extraSlowJob);
+        console.log(this.queue.length,this.queue.pending,this.queue.jobs.length,this.queue.results.length);
 
     }
+      
+
     // the 'actual' reviewerr 
     async actual_review_file(dronename,filename, callback) {
 
         this.isreviewed[filename] =  Date.now(); 
         // this flags the file as reviewed immediately as soon as we 'try', but before stdout results
         //  necessarily arrive, so we don't try to review it more than once concurrently
-
 
         // where we collect info on the files etc
         if (this.collectedfileinfo[filename] == undefined ) {
@@ -185,7 +198,7 @@ class Drone_LOGS_Manager {
         const stats = await stat(filename); // await stats to continue
         
         // print file last modified date
-        console.log(`File Last-Modified: ${stats.mtime} size:  ${stats.size} bytes`);
+        //console.log(`File Last-Modified: ${stats.mtime} size:  ${stats.size} bytes`);
 
         var formatted_date = date_format.asString('dd/MM/yyyy hh:mm:ss',stats.mtime);
         this.collectedfileinfo[filename].mtime = formatted_date; // stats.mtime is a a Date() object
@@ -227,7 +240,7 @@ class Drone_LOGS_Manager {
 
             }
 
-            this.collectedfileinfo[filename].review_stdout = data; // give it stdout as review "results"
+            this.collectedfileinfo[filename].review_stdout = datastr; // give it stdout as review "results"
           });
           
         child.stderr.on('data', (data) => {
@@ -239,8 +252,8 @@ class Drone_LOGS_Manager {
           
         child.on('error', (error) => {
             console.error(`error: ${error.message}`);
-            callback();// tell whoever is waiting.. the queueing code
-            return;
+            //callback();// tell whoever is waiting.. the queueing code
+            //return;
           });
           
         child.on('close', (code) => {
@@ -250,7 +263,8 @@ class Drone_LOGS_Manager {
                 console.log("review failed for log:",filename," with error code:",code);// cmd reported failure, retry?
                 //this.isreviewed[filename] = undefined; // to retry over and over
             }
-            callback();// tell whoever is waiting.. the queueing code
+            var res = ""+this.collectedfileinfo[filename].review_stdout;
+            callback(null,res);// tell whoever is waiting.. the queueing code
             return;
           }); 
 
