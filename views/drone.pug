@@ -13,17 +13,52 @@ html(lang='en')
     h2  Logs for :  #{drone.display_name}
     table.table
         tr
-                th.name  &nbsp;  log Date/Time &nbsp;
-                th.name &nbsp; Log Size  &nbsp;
-                th.name  Distance Travelled 
-                th.name &nbsp; Time In Air &nbsp;
+                th.name &nbsp;log Date/Time &nbsp;
+                th.name &nbsp;Log Size &nbsp;
+                th.name Distance Travelled
+                th.name Air Time (mm:ss)
+                th.name stderr count
+                th.name &nbsp;vehicle Type &nbsp;
+                th.name &nbsp;version &nbsp;
+                th.name &nbsp;git hash &nbsp;
+                th.name &nbsp;gps Type &nbsp;
+                th.name &nbsp;os Type &nbsp;
+                th.name &nbsp;board Type &nbsp;
+                th.name &nbsp;frame Type &nbsp;
+                th.name &nbsp;rc Protocol &nbsp;
+                th.name &nbsp;did Arm &nbsp;
+                th.name &nbsp;has Mission &nbsp;
+                th.name &nbsp;has Fence &nbsp;
+                th.name &nbsp;has Rally &nbsp;
+                th.name &nbsp;has Failsafe &nbsp;
+                th.name &nbsp;down load &nbsp;
+
         each log in loginfo
             tr
                 td.drname &nbsp; 
                     a(href='/'+drone.display_name) #{log.mtime}
         
-                td.folder &nbsp;   #{log.size} &nbsp;
-                td.sshe &nbsp;    #{log.total_distance_travelled} &nbsp;
-                td.lastupdate &nbsp;    #{log.total_time_in_air} &nbsp;
+                td.folder #{log.size}
+                td.sshe #{log.total_distance_travelled}
+                td.lastupdate #{log.total_time_in_air}
+                td.lastupdate #{log.bad_data}                
+                td.lastupdate #{log.vehicleType}
+                td.lastupdate #{log.version}
+                td.lastupdate #{log.githash}
+                td.lastupdate #{log.gpsType}
+                td.lastupdate #{log.osType}
+                td.lastupdate #{log.boardType}
+                td.lastupdate #{log.frameType}
+                td.lastupdate #{log.rcProtocol}
                 td.lastupdate 
-                     a(href=log.url) click to download  &nbsp;
+                    span.green #{log.didArm?'true':''}
+                td.lastupdate 
+                    span.green #{log.hasMission?'true':''}
+                td.lastupdate 
+                    span.green #{log.hasFence?'true':''}
+                td.lastupdate 
+                    span.green #{log.hasRally?'true':''}
+                td.lastupdate 
+                    span.red #{log.hasFailsafe?'YES':''}
+                td.lastupdate 
+                     a(href=log.url) log

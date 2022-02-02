@@ -1,6 +1,6 @@
 body {
     background: black;
-    font-size: 18px;
+    font-size: 14px;
     color: white;
 }
 
@@ -44,4 +44,7 @@ td {
 }
 .green {
     color: chartreuse;
+}
+.red {
+    color: rgb(255, 8, 0);
 }

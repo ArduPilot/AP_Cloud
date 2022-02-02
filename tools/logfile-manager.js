@@ -17,42 +17,52 @@ var serialize = require('node-serialize');
 class Drone_LOGS_Manager {
     constructor(dronelist) {
         this.dronelist = dronelist;
-        this.allresults = [];
-        this.isreviewed = [];// index is filename, values are timestamp of last review
-        this.collectedfileinfo= []; // index is filename, values are objects {} with useful stuff
+        this.allresults = {};
+        this.isreviewed = {};// index is filename, values are timestamp of last review
+        this.collectedfileinfo= {}; // index is filename, values are objects {} with useful stuff
         this.in_progress = true; // bool for gui to show if we are busy or not - todo 
 
-        this.jobtimers = []; //start time of each job saved here. idx is filename 
+        this.jobtimers1 = {}; //start time of each 'ft' job saved here. idx is filename 
+        this.jobtimers2 = {}; //start time of each 'msg' job saved here. idx is filename 
 
         this.queue = null;
         this.setup_queue();
     }
     setup_queue () {
         
-        this.queue = queue({ results: [] , autostart: true, concurrency: 9}); // for managing processing jobs ... 8 is ~number of cpu cores u have 
+        this.queue = queue({ results: [] , autostart: true, concurrency: 15}); // for managing processing jobs ... 8 is ~number of cpu cores u have 
         var self = this;
         this.queue.on('timeout', function (next, job) {
-            var this_job_start = self.jobtimers[job.filename];
+            var jobtype = job.type; // 'ft' or 'msg'
+            var this_job_start = null;
+            if ( jobtype == 'ft') {
+                this_job_start = self.jobtimers1[job.filename];
+            }
+            if ( jobtype == 'msg') {
+                this_job_start = self.jobtimers2[job.filename];
+            }
+            if (jobtype == null ) return;// error
+
             var now = Date.now();
-            console.log('job timed out:',job.filename,job.timeout,"job run seconds:",(now-this_job_start)/1000);
+            console.log('job timed out:',job.type,job.filename,job.timeout,"job run seconds:",(now-this_job_start)/1000);
             next();
         });
         // get notified when jobs complete
         this.queue.on('success', function (result, job) {
-            console.log('job result: (timeout seconds)',job.timeout/1000,result);
+            console.log('job result: (timeout seconds)',job.timeout/1000,job.type,result);
         });
 
         // begin processing, get notified on end / failure
         var self = this;
         this.queue.start(function (err) {
             if (err) throw err;
-            //console.log('all done:', self.queue.results);
+            console.log('queue setup ok:', self.queue.results);
         });
     }
 
     async serialize() {
 
-        var objS = serialize.serialize(this);
+        var objS = serialize.serialize(this,true); //Error: Can't serialize a object with a native function property. Use serialize(obj, true) to ignore the error.
 
         fs.writeFile('logger_data.json', objS, function (err) {
             if (err) return console.log(err);
@@ -67,15 +77,35 @@ class Drone_LOGS_Manager {
 
         this.dronelist = dronelist;
 
+        var cleanup1=0;
+        var cleanup2=0;
+
         // now we want to forget about logs that we haven't seen 'results' for so we can re-run or compelte the processing
         for ( var fname in this.isreviewed  ){// index is filename, values are timestamp of last review
             if  ( (this.collectedfileinfo[fname] == undefined ) || (this.collectedfileinfo[fname].mtime == null  )) {
                 delete(this.isreviewed[fname]);
                 delete(this.allresults[fname]);
-                delete(this.jobtimers[fname]);
+                delete(this.jobtimers1[fname]);
+                delete(this.jobtimers2[fname]);
+                cleanup1+=1;
             }
         }
+        for ( var fname in this.allresults  ){
 
+            if ( fname.toString().length < 4  ) {
+                var ftmp = this.allresults[fname];
+                this.allresults[ftmp] = true;
+            }
+            //var fname = this.allresults[idx];
+            if  ( (this.collectedfileinfo[fname] == undefined ) || (this.collectedfileinfo[fname].mtime == null  )) {
+                delete(this.isreviewed[fname]);
+                delete(this.allresults[fname]);
+                delete(this.jobtimers1[fname]);
+                delete(this.jobtimers2[fname]);
+                cleanup2+=1;
+            }
+        }
+        console.log("cleanup1:",cleanup1,"cleanup2:",cleanup2);
         // below is basically a redo of the consturctor for the queue stuff
         this.setup_queue();
 
@@ -84,7 +114,7 @@ class Drone_LOGS_Manager {
     // looks on-disk 'right now' at the log folder/s for all the drones, and "collects this info" and reports it via dronelist
     async getLogInfo() {
 
-        var newresults = []; 
+        var newresults = {}; 
 
         for (let d of this.dronelist) { // iterates "modifyable"[let] values[of], not keys, dronelist is a global
 
@@ -100,7 +130,7 @@ class Drone_LOGS_Manager {
 
                 // ignore anying other than .bin files..
                 if ( filename.endsWith('.BIN') || filename.endsWith('.bin') ) {
-                    newresults.push(filename);
+                    newresults[filename] = true;
                     
                     // do we also "check" each of the fiels as we find them..?
                     if ( ! await this.is_file_already_reviewed(filename)) {
@@ -163,6 +193,15 @@ class Drone_LOGS_Manager {
     queue_stats() {
 
         console.log("Queue info. pending:",this.queue.pending,"length:",this.queue.length);
+
+        var v = Object.keys(this.dronelist).length;
+        var w = Object.keys(this.allresults).length;
+        var x = Object.keys(this.isreviewed).length;
+        var y = Object.keys(this.collectedfileinfo).length;
+        var z1 = Object.keys(this.jobtimers1).length;
+        var z2 = Object.keys(this.jobtimers2).length;
+
+        console.log("stats counters:",v,w,x,y,z1,z2 );
         return { running : this.queue.pending,
                      waiting : this.queue.length};
     }
@@ -182,22 +221,36 @@ class Drone_LOGS_Manager {
         var jobtimeout = stats.size/1000*24; // get plausible milliseconds timeout from file sie
         if (stats.size == 0 ) return false; //don't even queue empty files
         var self = this;
-        function extraSlowJob (cb) {  
-            self.jobtimers[filename] = Date.now();
-            self.actual_review_file(d['display_name'],filename,cb);  
+        function extraSlowJob1 (cb) {  
+            self.jobtimers1[filename] = Date.now();
+            self.actual_review_file(d['display_name'],filename,cb,'ft');  // mavflighttime.py , aka 'ft'
         }
+        function extraSlowJob2 (cb) {  
+            self.jobtimers2[filename] = Date.now();
+            self.actual_review_file(d['display_name'],filename,cb,'msg');      //mavlogdump.py --type MSG, aka 'msg'
+        }
+
         //cb() is to report end-of-job
-        extraSlowJob.timeout = jobtimeout<5000?5000:jobtimeout; // instantiating python takes a few secs, so set a min of 3 secs
-        extraSlowJob.filename = filename;
-        console.log("extraSlowJob",extraSlowJob)
-        this.queue.push(extraSlowJob);
+        extraSlowJob1.timeout = jobtimeout<5000?5000:jobtimeout; // instantiating python takes a few secs, so set a min of 3 secs
+        extraSlowJob1.filename = filename;
+        extraSlowJob1.type = 'ft1';
+        console.log("extraSlowJob1",extraSlowJob1)
+        this.queue.push(extraSlowJob1);
+    
+        //cb() is to report end-of-job
+        extraSlowJob2.timeout = jobtimeout<5000?5000:jobtimeout; // instantiating python takes a few secs, so set a min of 3 secs
+        extraSlowJob2.filename = filename;
+        extraSlowJob2.type = 'msg';
+        console.log("extraSlowJob2",extraSlowJob2)
+        this.queue.push(extraSlowJob2);
+      
         console.log(this.queue.length,this.queue.pending,this.queue.jobs.length,this.queue.results.length);
 
     }
       
 
     // the 'actual' reviewerr 
-    async actual_review_file(dronename,filename, callback) {
+    async actual_review_file(dronename,filename, callback,jobtype) {
 
         this.isreviewed[filename] =  Date.now(); 
         // this flags the file as reviewed immediately as soon as we 'try', but before stdout results
@@ -213,20 +266,42 @@ class Drone_LOGS_Manager {
                     lf = tmp.logs_folder;
                 }
             }
-
-            var idx1 = filename.indexOf(lf+1);    
+            var idx1 = -1
+            if (lf.substring(0,1)== '.'){
+                idx1 = filename.indexOf(lf.substring(1)); // remove leading dot,it becomes url
+            } else if (lf.substring(0,1)== '/'){ 
+                idx1 = filename.indexOf(lf);    //if its a full-path from 'root' leave it alone, as we aren't that smart yet, todo
+            } else {
+               idx1 = filename.indexOf(lf);    //if its a full-path from 'root' leave it alone, as we aren't that smart yet, todo
+            }
             if (idx1 < 0 ) return;// string not found in output, skip it            
             var url = filename.substr(idx1);// from ibx1 to end
 
             this.collectedfileinfo[filename] = {
                 dronename: dronename,
+                // from file stat
                 mtime : null,
                 size : null,
+                // from mavflighttime
                 review_stdout : null,
-                bad_data : 0,
+                bad_data : 0, //lines of stderr output, if > 50 we give up.
                 total_time_in_air : 0,
                 total_distance_travelled : 0,
-                url : url
+                url : url,
+                // from mavlogdump.py --types MSG 
+                vehicleType : null,
+                version : null,
+                githash : null,
+                gpsType : null,
+                osType : null,
+                boardType : null,
+                frameType : 'unknown',
+                rcProtocol : null,
+                didArm : false,
+                hasMission : false,
+                hasFence : false,
+                hasRally : false,
+                hasFailsafe : false,
             };
         }
 
@@ -245,12 +320,27 @@ class Drone_LOGS_Manager {
 
         // now run a log-alalyser of some sort...
         console.log("reviewing file:",filename);
-        //var command = 'ls';
-        //var args = ['-l',filename];
-        var command = 'mavflighttime.py';
-        var args = [filename];
-        const child = spawn(command, args); //does not create a new shell , so no asterisks etc
+        
+        var review_types = {
+            ls : {
+                command: 'ls',
+                args: ['-l',filename]
+            },
+            ft : {
+                command: 'mavflighttime.py',
+                args: [filename]
+            },
+            msg : {
+                command: 'mavlogdump.py',
+                args: ['--types', 'MSG',filename]
+            },
 
+        };
+        
+        var command = review_types[jobtype].command; //eg 'mavflighttime.py';
+        var args    = review_types[jobtype].args;
+
+        const child = spawn(command, args); //does not create a new shell , so no asterisks etc
         child.stdout.on('data', (data) => {  // data is a 'Buffer' here in node
             var datastr = data.toString();
             //console.log(`stdout:\n${datastr}`);
@@ -268,6 +358,23 @@ class Drone_LOGS_Manager {
                 var lines = summary_data.split(/\r?\n/); // split on newline/s
                 var _total_time_in_air = lines[0];
                 var _total_distance_travelled = lines[1];
+
+                // discard obvious crap - fisrt tim-in-air crap, then distance-travelled crap
+                var tt = _total_time_in_air.split(/:/);
+                var mm = tt[0];
+                var ss = tt[1];
+                var secstotal = (mm*60)+ss;
+                if (secstotal >  24*60*60 )  {  //24hrs in secs is a very long flight
+                    _total_time_in_air = 'air: 0:00'; // to match next pattern below but return zero
+                }
+                var meters = 0;
+                let _matches = _total_distance_travelled.match(/^\s*([\d\.]*)\s+(.*)$/); // '36273.4 meters'
+                if (  _matches && _matches.length == 3 ) {
+                    meters = _matches[1]; //'36273.4'
+                    if (meters >  1000*1000 ){  // that's 1000km in meters, a very very long flight
+                        _total_distance_travelled = 'ed: 0.0 meters';// to match next patern below but return zero
+                    }
+                } 
                 // minimally parse the useful bits to get: 
                 this.collectedfileinfo[filename].total_time_in_air = _total_time_in_air.split(/r: /)[1];               // eg "12:24"
                 this.collectedfileinfo[filename].total_distance_travelled = _total_distance_travelled.split(/d: /)[1]; // eg "8721.1 meters"
@@ -275,6 +382,136 @@ class Drone_LOGS_Manager {
                 console.log(filename,"time-in-air(h:m):",this.collectedfileinfo[filename].total_time_in_air,"distance flown:",this.collectedfileinfo[filename].total_distance_travelled );
 
             }
+            if ( datastr.includes('MSG {')) {
+
+                var lines = datastr.split(/\r?\n/);
+
+                // template to populate
+                var msginfo = {
+                    vehicleType : null,
+                    version : null,
+                    githash : null,
+                    gpsType : null,
+                    osType : null,
+                    boardType : null,
+                    frameType : 'unknown',
+                    rcProtocol : null,
+                    didArm : false,
+                    hasMission : false,
+                    hasFence : false,
+                    hasRally : false,
+                    hasFailsafe : false,
+                };
+
+                for ( var line of lines) {
+                    var idx1 = datastr.indexOf('MSG {');    
+                    if (idx1 < 0 ) continue;// string not found in this line of output, skip it  
+
+                    var messageidx = line.indexOf('Message : ');
+                    var tmp = line.substr(messageidx+10);// from end of 'Message : ' to end
+                    var curlyidx = tmp.indexOf('}');
+                    var message =  tmp.substr(0,curlyidx); 
+
+                    let matches = message.match(/^(Ardu\w*)\s+(.*?)\s+(.*)$/)
+                    if (  matches && matches.length == 4 ) {
+                        msginfo.vehicleType = matches[1];
+                        msginfo.version     = matches[2];
+                        msginfo.githash     = matches[3];
+                        continue;
+                    }
+
+                    matches = message.match(/^(ChibiOS: .*)$/)
+                    if ( matches && matches.length == 2 ) {
+                        msginfo.osType = matches[1];
+                        continue;
+                    }
+                    matches = message.match(/^(PX4: [\w\d]+ NuttX: [\w\d]+)$/); // older px4 code
+                    if ( matches && matches.length == 2 ) {
+                        msginfo.osType = matches[1];
+                        continue;
+                    }
+                    matches = message.match(/^(CubeBlack .*)$/)
+                    if ( matches && matches.length == 2 ) {
+                        msginfo.boardType = matches[1];
+                        continue;
+                    }
+                    matches = message.match(/^RC Protocol: (.*)$/)
+                    if ( matches && matches.length == 2 ) {
+                        msginfo.rcProtocol = matches[1];
+                        continue;
+                    }
+                    matches = message.match(/(.*?mission.*)/i) // any mission msg 'Mission: ' or 'New mission'
+                    if ( matches && matches.length > 1 ) {
+                        msginfo.hasMission = true;
+                        continue;
+                    }
+                    matches = message.match(/^(Fence enabled.*)$/) // fence enavbled?
+                    if ( matches && matches.length > 1 ) {
+                        msginfo.hasFence = true;
+                        continue;
+                    }
+                    matches = message.match(/^(New rally.*)$/i) // any rally
+                    if ( matches && matches.length > 1 ) {
+                        msginfo.hasRally = true;
+                        continue;
+                    }
+                    matches = message.match(/^(Failsafe.*)$/i) // any 'short' or 'long' failafe event? 'Failsafe. Long event off: reason=3'
+                    if ( matches && matches.length > 1 ) {
+                        msginfo.hasFailsafe = true;
+                        continue;
+                    }
+                    matches = message.match(/^(Throttle armed.*)$/i) // any mission msg 'Mission: ' or 'New mission'
+                    if ( matches && matches.length > 1 ) {
+                        msginfo.didArm = true;
+                        continue;
+                    }
+                    matches = message.match(/^(Takeoff complete.*)$/i) // any mission msg 'Mission: ' or 'New mission'
+                    if ( matches && matches.length > 1 ) {
+                        msginfo.didArm = true;
+                        continue;
+                    }
+                    matches = message.match(/^(Reached [wW]aypoint.*)$/i) // if we reached a waypoint, we were clearly flying. :-)
+                    if ( matches && matches.length > 1 ) {
+                        msginfo.didArm = true;
+                        msginfo.hasMission = true;
+                        continue;
+                    }
+                    matches = message.match(/^(Armed AUTO.*)$/i) // older px4 code
+                    if ( matches && matches.length > 1 ) {
+                        msginfo.didArm = true;
+                        msginfo.hasMission = true;
+                        continue;
+                    }
+                    matches = message.match(/^(Executing nav command.*)$/i) // older px4 code
+                    if ( matches && matches.length > 1 ) {
+                        msginfo.didArm = true;
+                        msginfo.hasMission = true;
+                        continue;
+                    }
+                    matches = message.match(/^Frame: (.*)$/i) // any mission msg 'Mission: ' or 'New mission'
+                    if ( matches && matches.length > 1 ) {
+                        msginfo.frameType = matches[1];
+                        continue;
+                    }
+                    matches = message.match(/^GPS (\d+): detected as (.*?) at (\d+) baud$/)
+                    if ( matches && matches.length == 4 ) {
+                        //msginfo.gpsNum      = matches[1];
+                        msginfo.gpsType     = matches[2];
+                        //msginfo.gpsBaud     = matches[3];
+                        continue;
+                    }
+
+                }
+                // don't console.log or 'assign' irrelevant stuff...
+                if ( (msginfo.vehicleType == null) && (msginfo.version == null) &&  (msginfo.githash == null) && (msginfo.didArm == false) ) {
+                    // pass
+                } else {
+                    console.log(msginfo);
+                    // add all msginfo attrs to the main lookup table:this.collectedfileinfo[filename]
+                    Object.assign(this.collectedfileinfo[filename],msginfo);  // not .merge() as that doesnt work in node
+                }
+            }
+        
 
             this.collectedfileinfo[filename].review_stdout = datastr; // give it stdout as review "results"
           });
