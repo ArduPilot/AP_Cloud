@@ -361,14 +361,19 @@ class Drone_LOGS_Manager {
 
                 // discard obvious crap - fisrt tim-in-air crap, then distance-travelled crap
                 var tt = _total_time_in_air.split(/:/);
-                var mm = tt[0];
-                var ss = tt[1];
+                var mm = tt[1].trim();
+                var ss = tt[2].trim();
+                if  ( (mm < 0 ) ||  (ss < 0 ) ) { // can't have negative minutes or negative seconds 
+                    mm=0; ss=0;
+                    _total_time_in_air = 'air: 0:00'; // to match next pattern below but return zero
+                }
                 var secstotal = (mm*60)+ss;
                 if (secstotal >  24*60*60 )  {  //24hrs in secs is a very long flight
                     _total_time_in_air = 'air: 0:00'; // to match next pattern below but return zero
                 }
                 var meters = 0;
-                let _matches = _total_distance_travelled.match(/^\s*([\d\.]*)\s+(.*)$/); // '36273.4 meters'
+                //_total_distance_travelled =  "Total distance travelled: 545851922.0 meters" is clearly too big
+                let _matches = _total_distance_travelled.split(/d: /)[1].match(/^\s*([\d\.]*)\s+(.*)$/); // '36273.4 meters'
                 if (  _matches && _matches.length == 3 ) {
                     meters = _matches[1]; //'36273.4'
                     if (meters >  1000*1000 ){  // that's 1000km in meters, a very very long flight
