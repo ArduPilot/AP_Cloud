@@ -9,7 +9,11 @@ html(lang='en')
             
         }
   body
-    h1= message
+    div.topbar
+      a(href='/') 
+        img(src='/cloud1.png' style='width:35px; height:30px;')
+        <<-- [back to home]
+    h1= message 
     h2  Logs for :  #{drone.display_name}
     table.table
         tr
@@ -24,6 +28,7 @@ html(lang='en')
                 th.name &nbsp;gps Type &nbsp;
                 th.name &nbsp;os Type &nbsp;
                 th.name &nbsp;board Type &nbsp;
+                th.name &nbsp;board Serial &nbsp;
                 th.name &nbsp;frame Type &nbsp;
                 th.name &nbsp;rc Protocol &nbsp;
                 th.name &nbsp;did Arm &nbsp;
@@ -48,6 +53,7 @@ html(lang='en')
                 td.lastupdate #{log.gpsType}
                 td.lastupdate #{log.osType}
                 td.lastupdate #{log.boardType}
+                td.lastupdate #{log.boardSerial}
                 td.lastupdate #{log.frameType}
                 td.lastupdate #{log.rcProtocol}
                 td.lastupdate 

@@ -1,0 +1,33 @@
+doctype html
+html(lang='en')
+  head
+    title= title
+    link(rel="stylesheet" href="style.css")
+    style.
+        table {
+            border-color: red;
+            
+        }
+  body
+    div.topbar
+      a(href='/') 
+        img(src='/cloud1.png' style='width:35px; height:30px;')
+        <<-- [back to home]
+    h1= message
+    h2 Drone Serials   
+
+  p &nbsp;
+
+    table.table
+        tr
+                th.name  &nbsp;  type &nbsp;
+                th.name  &nbsp;  serial &nbsp;
+                th.name &nbsp; how many logs have this &nbsp;
+
+        each info in showserials
+            tr
+                td.drname &nbsp;   #{info.type} &nbsp;
+                td.drname &nbsp;   #{info.serial} &nbsp;
+                td.folder &nbsp;   #{info.count} &nbsp;
+
+                        

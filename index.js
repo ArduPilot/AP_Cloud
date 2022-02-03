@@ -123,12 +123,13 @@ app.get('/',  (req, res) => {
     }
     var queuestats = LOGmanager.queue_stats();// get queue info
 
+
     res.render('index', { title: 'AP_Cloud', 
                           message: 'Welcome to AP_Cloud', 
                           dronelist:dronelist, 
                           wport:wport, whost:whost,
                           pinginfo : pinginfo,
-                          queuestats : queuestats
+                          queuestats : queuestats,
                          })
 });
 
@@ -148,6 +149,18 @@ for (let d of dronelist) {
     });
 
 }
+// serials page
+app.get('/showserials',  (req, res) => {
+
+  var showserials = LOGmanager.serial_stats();// get serials
+
+  res.render('serials', { title: 'AP_Cloud', 
+                      message: 'Welcome to AP_Cloud', 
+                      dronelist:dronelist, 
+                      wport:wport, whost:whost,
+                      showserials : showserials
+                       })
+});
 
 const server = app.listen(wport, whost, (err) => {
     if (err) {

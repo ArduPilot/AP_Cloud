@@ -48,3 +48,11 @@ td {
 .red {
     color: rgb(255, 8, 0);
 }
+
+.topbar {
+    background: rgb(25, 159, 221);
+    border: 5px solid rgb(25, 159, 221); 
+    text-align: left;
+    width: 95%;
+    margin-left: 1%;
+}

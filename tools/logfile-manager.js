@@ -190,6 +190,67 @@ class Drone_LOGS_Manager {
 
     }
 
+    serial_stats() {
+        var ret = {};
+        
+        // scan all processed filenames and pickout uniqie serials
+        for ( var x in this.collectedfileinfo) {
+
+            //dronename: dronename,
+            //boardType : null,
+            //boardSerial : null,
+            var info = this.collectedfileinfo[x];
+
+            // this inconvenient layout makes it easier for serials.pug to render 
+            // do we have both?
+            if (  (info.boardType != null ) && (info.boardSerial != null ) ) {
+                var idx= ret[info.boardSerial];
+                if (idx == undefined ) ret[info.boardSerial] = { count: 1, serial: info.boardSerial, type: info.boardType};
+                if (idx != undefined ) ret[info.boardSerial].count += 1;
+                console.log('x',idx);
+
+            }
+            // backward compat if we have just one
+            if ( (info.boardType == null ) && (info.boardSerial != null ) ) {
+                var type =   info.boardSerial.match(/^(\w+) ([\w\d\s]+)/)[1];
+                var serial = info.boardSerial.match(/^(\w+) ([\w\d\s]+)/)[2];
+                if ( type && serial) {
+                    var idx= ret[serial];
+                    if (idx == undefined ) ret[serial] = { count: 1, serial: serial, type: type};
+                    if (idx != undefined ) ret[serial].count += 1; 
+                    //console.log('y1',idx);
+                } else {
+                    var idx= ret[info.boardSerial];
+                    if (idx == undefined ) ret[info.boardSerial] = { count: 1, serial: info.boardSerial, type: 'unknown'};
+                    if (idx != undefined ) ret[info.boardSerial].count += 1; 
+                    //console.log('y2',idx);
+                }
+
+            } 
+            // or the other
+            if ( (info.boardType != null ) && (info.boardSerial == null ) ) {
+
+                var type =   info.boardType.match(/^(\w+) ([\w\d\s]+)/)[1];
+                var serial = info.boardType.match(/^(\w+) ([\w\d\s]+)/)[2];
+                if ( type && serial) {
+                    var idx= ret[serial];
+                    if (idx == undefined ) ret[serial] = { count: 1,  serial: serial, type: type};
+                    if (idx != undefined ) ret[serial].count += 1; 
+                    //console.log('z1',idx);
+                } else {
+                    var idx= ret[info.boardType];
+                    if (idx == undefined ) ret[info.boardType] = { count: 1, serial: info.boardType, type: 'unknown'};
+                    if (idx != undefined ) ret[info.boardType].count += 1; 
+                    //console.log('z2',idx);
+                }
+            }
+            
+
+        }
+        console.log("serial_stats",ret);
+        return ret;
+    }
+
     queue_stats() {
 
         console.log("Queue info. pending:",this.queue.pending,"length:",this.queue.length);
@@ -295,6 +356,7 @@ class Drone_LOGS_Manager {
                 gpsType : null,
                 osType : null,
                 boardType : null,
+                boardSerial : null,
                 frameType : 'unknown',
                 rcProtocol : null,
                 didArm : false,
@@ -399,6 +461,7 @@ class Drone_LOGS_Manager {
                     gpsType : null,
                     osType : null,
                     boardType : null,
+                    boardSerial : null,
                     frameType : 'unknown',
                     rcProtocol : null,
                     didArm : false,
@@ -435,9 +498,10 @@ class Drone_LOGS_Manager {
                         msginfo.osType = matches[1];
                         continue;
                     }
-                    matches = message.match(/^(CubeBlack .*)$/)
-                    if ( matches && matches.length == 2 ) {
+                    matches = message.match(/^(Cube\w+) (.*)$/) // eg 'CubeBlack 0043001C 314E5002 20313157'
+                    if ( matches && matches.length == 3 ) {
                         msginfo.boardType = matches[1];
+                        msginfo.boardSerial = matches[2];
                         continue;
                     }
                     matches = message.match(/^RC Protocol: (.*)$/)
@@ -508,10 +572,11 @@ class Drone_LOGS_Manager {
 
                 }
                 // don't console.log or 'assign' irrelevant stuff...
-                if ( (msginfo.vehicleType == null) && (msginfo.version == null) &&  (msginfo.githash == null) && (msginfo.didArm == false) ) {
-                    // pass
+                //if ( (msginfo.vehicleType == null) && (msginfo.version == null) &&  (msginfo.githash == null) && (msginfo.didArm == false) ) {
+                if ( (msginfo.vehicleType == null) && (msginfo.version == null) &&  (msginfo.githash == null) ) {
+                        // pass
                 } else {
-                    console.log(msginfo);
+                    console.log('msginfo',filename,msginfo);
                     // add all msginfo attrs to the main lookup table:this.collectedfileinfo[filename]
                     Object.assign(this.collectedfileinfo[filename],msginfo);  // not .merge() as that doesnt work in node
                 }

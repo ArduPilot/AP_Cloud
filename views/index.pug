@@ -9,9 +9,18 @@ html(lang='en')
             
         }
   body
+    div.topbar
+      a(href='/') 
+        img(src='/cloud1.png' style='width:35px; height:30px;')
     h1= message
     h2 Drone List   
-    h3 Currently Processing Logs?  Busy: #{queuestats.running} Waiting: #{queuestats.waiting}
+    h3 Currently Processing Logs?  Busy: #{queuestats.running} Waiting: #{queuestats.waiting} 
+
+  span &nbsp;  
+    a(href='/showserials') Show Serials
+
+  p &nbsp;
+
     table.table
         tr
                 th.name  &nbsp;  Display Name &nbsp;
