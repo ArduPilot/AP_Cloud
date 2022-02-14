@@ -5,7 +5,7 @@ TLDR:  some stuff works.
 
 Goals - a 'web gui' for:
 
- - a "drone management" solution
+ - a "drone management" solution for, back-office, post-flight management of logs, versions, firmware deployment, 
  - ability to easily get logs off the vehicle - working
  - ability to see drone version info in a web interface - working
  - ability to update the firmware on each drone  (with appropriate hardware) - not working
@@ -14,6 +14,10 @@ Goals - a 'web gui' for:
  - and display a gui showing how recently each drone had uploaded. - kinda 
  - run some sort of 'log analyser' on each log after its uploaded for stats/params/faults/etc. - working
  - perhaps integrate with plot.ardupilot.org , or a copy of it, for a 'plot this log' function - not working
+ 
+Not Goals:
+ - this is NOT a groundstation for watching drones flying around as-it-happens. we have enough ground-stations already.
+ - this is NOT a software thats usful if you own 1-3 drones, unless perhaps they fly constantly in rotation or some other heavy uses.
 
 Technical expectations:
 
