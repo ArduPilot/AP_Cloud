@@ -120,6 +120,8 @@ app.get('/',  (req, res) => {
     for (let d of dronelist) {// 'let' allows us to edit 'd' on the fly
         if (pinginfo[d['display_name']] )
             d['lastupdate'] =  pinginfo[d['display_name']].status?'Online Now!':'';
+        var loginfo = LOGmanager.getLogReviewInfo(d);// get up-to-date log info for each specific drone
+        d['log_count'] = loginfo.length;
     }
     var queuestats = LOGmanager.queue_stats();// get queue info
 
@@ -138,7 +140,7 @@ for (let d of dronelist) {
 
     //eg /drone1
     app.get('/'+d['display_name'],  (req, res) => {
-        var loginfo = LOGmanager.getLogReviewInfo(d);// get up-to-date log info
+        var loginfo = LOGmanager.getLogReviewInfo(d);// get up-to-date log info for this drone.
         res.render('drone', { title: 'AP_Cloud', 
                             message: 'Welcome to AP_Cloud', 
                             dronelist:dronelist, 
@@ -167,5 +169,5 @@ const server = app.listen(wport, whost, (err) => {
         console.log(err);
         exit(1); // process.exit
     }
-    console.log(`Server is running on ${whost}:${server.address().port}`);
+    console.log(`Server is running on http://${whost}:${server.address().port}`);
 });
