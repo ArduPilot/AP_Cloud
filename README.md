@@ -10,7 +10,7 @@ Goals - a 'web gui' for:
  - ability to see drone version info in a web interface - working
  - ability to update the firmware on each drone  (with appropriate hardware) - not working
  - search through the logs and their timestamps - working
- - download logs for offline review/analysis  -  working. run this: "cd AP_Cloud/public ; ln -s ../logs ." to make your logs downloadable with no security.
+ - download logs for offline review/analysis  -  working
  - and display a gui showing how recently each drone had uploaded. - kinda 
  - run some sort of 'log analyser' on each log after its uploaded for stats/params/faults/etc. - working
  - perhaps integrate with plot.ardupilot.org , or a copy of it, for a 'plot this log' function - not working
