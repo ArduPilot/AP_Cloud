@@ -110,6 +110,12 @@ const every_5_mins = schedule.scheduleJob('0 */5 * * * *', async function () {
 app.set('views', './views');
 app.set('view engine', 'pug');
 
+// create symlink for log downloads if it doesn't exist
+const logsSymlink = path.join(__dirname, 'public', 'logs');
+if (!fs.existsSync(logsSymlink)) {
+  fs.symlinkSync(path.join(__dirname, 'logs'), logsSymlink);
+}
+
 // stuff in ./public/xx is accessable as /xx
 // https://www.youtube.com/watch?v=sFAT_vTxT9o&ab_channel=dcode 
 app.use(express.static('public'))
