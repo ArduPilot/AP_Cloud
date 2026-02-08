@@ -57,7 +57,7 @@ What works?
 
 Prerequisites to use this:
  - AP_Cloud runs on Linux only right now, sorry.
- - AP_Cloud requires a 'node' version of at least v12  ( we use 'nvm' to switch between node versins, but there are other tools)
+ - AP_Cloud requires a 'node' version of at least v12  ( we use 'nvm' to switch between node versions, but there are other tools)
  - you know its a work-in-progress , right? 
  - you must have 'mavflighttime.py' in the path. [ its part of mavproxy ], we might bundle it later.
  - you must have 'mavlogdump.py' in the path. [ its part of mavproxy ], we might bundle it later.
